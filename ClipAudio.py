@@ -10,6 +10,7 @@ import soundfile as sf
 #import librosa
 import numpy as np
 import glob
+import thinkdsp
 
 # final sample rate for wave files
 SAMPLERATE = 8000
@@ -61,7 +62,7 @@ def clip_audio(samples):
     # find longest audio cluster
     longestCluster = find_longest_cluster(clusters)
 
-    return samples[longestCluster[0]*frameSize:longestCluster[1]*frameSize]
+    return samples[longestCluster[0]*frameSize:longestCluster[1]*frameSize+frameSize]
 
 def clip_waves(rawAudioPath, clippedAudioPath):
     for fileName in glob.iglob(os.path.join(rawAudioPath, '*.wav')):
@@ -76,6 +77,16 @@ def clip_waves(rawAudioPath, clippedAudioPath):
         clippedFileName = os.path.join(clippedAudioPath, os.path.basename(fileName))
         sf.write(clippedFileName, clippedSamples, SAMPLERATE, subtype='PCM_16')
         print(f'{fileName} clipped and saved as {clippedFileName}')
+
+def filter_audio(clippedAudioPath):
+    for fileName in glob.iglob(os.path.join(clippedAudioPath, '*.wav')):
+        print('File:', fileName)
+        sample = thinkdsp.read_wave(fileName)
+        spectrum = sample.make_spectrum()
+        spectrum.low_pass(cutoff=3400, factor=0.01)
+        spectrum.high_pass(cutoff=300, factor=0.01)
+        wave = spectrum.make_wave()
+        wave.play(fileName)
 
 def main():
     assert len(sys.argv) > 2, "Must include path to audio files and path for clipped audio files as arguments."
@@ -92,7 +103,9 @@ def main():
 
     clip_waves(rawAudioPath, clippedAudioPath)
 
-    print('Audio Clipping complete.')
+    filter_audio(clippedAudioPath)
+
+    print('Audio Clipping and filtering complete.')
 
 if __name__ == "__main__":
     main()
